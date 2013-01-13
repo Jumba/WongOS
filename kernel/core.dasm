@@ -1,0 +1,67 @@
+#include "../data/data.dasm"
+#include "../data/strings.dasm"
+
+JSR os_boot
+JSR os_login
+
+:WongOS
+	IFE 0, 0
+		SET PC, WongOS
+
+:os_boot
+	JSR pushall
+
+	JSR init_hardware
+	IFN [monitor], 0xFFFF
+		JSR init_monitor
+	;IFN [clock], 0xFFFF	
+	;	JSR init_clock
+	IFN [keyboard], 0xFFFF
+		JSR init_keyboard 
+
+	JSR enable_interrupts
+
+	JSR popall
+	SET PC, POP
+
+:os_login
+	SET PUSH, A
+	SET PUSH, B
+	SET PUSH, C
+
+	:loop_read
+
+	SET A, 0x0000
+
+	JSR readline
+	SET A, B
+
+	
+	SET B, cmd_version
+	JSR strcmp
+
+	IFN C, 0
+		SET PC, command_version_end
+
+	SET A, 0x0000
+	SET B, res_version
+	JSR monitor_write_buffer
+	SET PC, loop_read
+	:command_version_end
+
+	SET PC, loop_read
+
+	:exit_os_login
+
+	SET C, POP
+	SET B, POP
+	SET A, POP
+	SET PC, POP
+
+
+#include "hardware.dasm"
+#include "interrupts.dasm"
+#include "library.dasm"
+#include "../drivers/monitor.dasm"
+#include "../drivers/clock.dasm"
+#include "../drivers/keyboard.dasm"

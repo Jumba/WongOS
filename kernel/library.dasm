@@ -1,0 +1,68 @@
+; Push all registers to the stack.
+:pushall
+	SET [pushall_buffer], POP
+	SET PC, [pushall_buffer]
+	SET PUSH, A
+	SET PUSH, B
+	SET PUSH, C
+	SET PUSH, I
+	SET PUSH, J
+	SET PUSH, X
+	SET PUSH, Y
+	SET PUSH, Z
+	SET PUSH, EX
+
+	SET PC, [pushall_buffer]
+
+; Pop all registers from the stack.
+:popall
+	SET [pushall_buffer], POP
+	SET PC, [pushall_buffer]
+	SET EX, POP
+	SET Z, POP
+	SET Y, POP
+	SET X, POP
+	SET J, POP
+	SET I, POP
+	SET C, POP
+	SET B, POP
+	SET A, POP
+
+	SET PC, [pushall_buffer]
+
+; AtlasOS strcmp function + modification.
+; Compares strings and stores the result in C and EX
+; A=B => C=0, EX=0
+; A>B => C>0, EX=0
+; A<B => C>0, EX>0
+; Takes:
+; A -> source #1
+; B -> source #2
+; X -> 0 - normal, >0 - staight from monitor buffer (AND with 0x00FF to remove color.)
+; If X >0 A MUST BE the value in the monitor buffer.
+; C <- result
+:strcmp
+    SET PUSH, A
+    SET PUSH, B
+    SET PUSH, X
+    SET C, 0
+
+:strcmp_loop
+	SET X, [A]
+	AND X, 0x00FF
+
+    IFE X, 0
+        SET PC, strcmp_end
+    IFN X, [B]
+        SET PC, strcmp_end
+    ADD A, 1
+    ADD B, 1
+    SET PC, strcmp_loop
+
+:strcmp_end
+    SET C, [A]
+    SUB C, [B]
+    SET X, POP
+    SET B, POP
+    SET A, POP
+    SET PC, POP 

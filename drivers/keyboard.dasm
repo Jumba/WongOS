@@ -1,0 +1,143 @@
+; --------------------------------------
+; Generic keyboard
+; --------------------------------------
+
+:init_keyboard
+	SET PUSH, A
+	SET PUSH, B
+
+	IFE [keyboard], 0xFFFF ; no keyboard, exit
+		SET PC, init_keyboard_exit
+
+	;get the interrupt identification number
+	SET A, keyboard_isr
+	JSR add_interrupt
+	SET [keyboard_isr_identifier], B
+
+	SET A, 3
+	HWI [keyboard]
+
+	:init_keyboard_exit
+	SET B, POP
+	SET A, POP
+	SET PC, POP
+
+:keyboard_isr
+    SET PUSH, A
+    SET PUSH, C
+
+    SET A, 1
+    HWI [keyboard]
+
+	SET [keyboard_buffer], C
+    SET C, POP
+    SET A, POP
+	
+	SET PC, exit_isr
+
+; FUNCTION: readlie
+; DESC: Read the keyboard input until enter is hit. Print input to active screen.
+; ARG: A - Process number
+; RET: B - Result buffer start.
+:readline
+	SET PUSH, A
+	SET PUSH, C
+
+	JSR monitor_get_buffer
+	; Store the value of B.
+	SET PUSH, B
+
+	JSR keyboard_clear_buffer
+
+	:keyboard_readline_int
+		:keyboard_readline_loop
+			IFE [keyboard_buffer], 0x11 ;return key
+				SET PC, keyboard_readline_return
+			IFE [keyboard_buffer], 0x10 ; backspace
+				SET PC, keyboard_readline_backspace
+			IFL [keyboard_buffer], 0x80
+				IFG [keyboard_buffer], 0x1F
+					SET PC, keyboard_readline_put_char
+			SET PC, keyboard_readline_loop
+
+			:keyboard_readline_backspace
+				JSR monitor_backspace_buffer
+				SET [keyboard_buffer], 0x0000
+				SET PC, keyboard_readline_loop
+
+			:keyboard_readline_put_char
+				SET B, [keyboard_buffer]
+				SET C, 0xF000
+				JSR monitor_put_char
+				SET [keyboard_buffer], 0x0000
+				SET PC, keyboard_readline_loop
+
+	:keyboard_readline_return
+		JSR monitor_newline_buffer
+		SET [keyboard_buffer], 0x0000
+		SET PC, keyboard_readline_exit
+
+	:keyboard_readline_exit
+		SET B, POP
+		SET C, POP
+		SET A, POP
+		SET PC, POP
+
+
+; FUNCTION: waitKey 
+; DESC: Wait for a specific key. Input 0x0001 is any key.
+; ARG: A - Key to wait for.
+:keyboard_wait_key
+	SET PUSH, A
+	SET PUSH, B
+
+	JSR keyboard_clear_buffer
+
+	IFL A, 0x0010  ; minimum
+		SET PC, keyboard_wait_key_any
+
+	IFG A, 0x0091 ; maximum
+		SET PC, keyboard_wait_key_any
+
+	SET PC, keyboard_wait_key_int
+
+	:keyboard_wait_key_any
+		SET A, 0x0001
+
+	:keyboard_wait_key_int
+		:keyboard_wait_key_loop
+			IFN [keyboard_buffer], 0x0000
+				IFE A, 0x0001
+					SET PC, keyboard_wait_key_exit
+				IFE [keyboard_buffer], A
+					SET PC, keyboard_wait_key_exit
+				SET PC, keyboard_wait_key_loop
+
+	:keyboard_wait_key_exit
+	SET B, POP
+	SET A, POP
+	SET PC, POP
+
+:keyboard_clear_buffer
+	SET PUSH, A
+	
+	SET A, 0
+	HWI [keyboard]
+
+	SET A, POP
+	SET PC, POP
+
+
+:keyboard_disable
+	SET PUSH, A
+	SET PUSH, B
+
+	SET A, 3
+	SET B, 0
+	HWI [keyboard]
+
+	SET B, POP
+	SET A, POP
+	SET PC, POP
+
+:keyboard_isr_identifier	DAT 0xFFFF

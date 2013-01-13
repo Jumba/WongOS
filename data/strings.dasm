@@ -1,0 +1,36 @@
+:strings_start
+SET PC, strings_end
+
+; STRINGS 
+;"                                "  32-length
+; string start with the color.
+; Ends with 0x0000.
+
+;kernel specific
+
+:k_string_success               DAT 0xA000, "Success", 0x0000
+:k_string_failed                DAT 0x4000, "Failed", 0x0000
+
+:k_string_load_hardware         DAT 0xF000, "Loading Hardware...", 0x0000
+
+;user specific
+
+
+
+
+;general
+:string_monitor                 DAT 0xF000, "Monitor", 0x0000
+:string_sped                    DAT 0xF000, "SPED-3", 0x0000
+:string_floppy                  DAT 0xF000, "FloppyD", 0x0000
+:string_clock                   DAT 0xF000, "Clock", 0x0000
+:string_keyboard                DAT 0xF000, "Keyboard", 0x0000, 0x0000
+
+; Help Commands.
+; Command + response.
+:cmd_version					DAT "version", 0x0000
+:res_version					DAT 0x7000, "Wong OS version 0.1a`", 0x0000
+
+:cmd_exit						DAT "exit", 0x0000
+:res_exit						DAT 0x7000, "Exiting`", 0x0000
+
+:strings_end

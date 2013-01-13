@@ -1,0 +1,265 @@
+; -------------------------
+; Driver for LEM1802 - Low Energy Monitor
+; ID: 0x7349f615, version: 0x1802
+; Manufacturer: 0x1c6c8b36 (NYA_ELEKTRISKA)
+; -------------------------
+
+; Subroutines:
+;	init_monitor
+;	clear(buffer)
+;	write(buffer)
+; 	display(buffer)
+
+; FUNCTION init_monitor
+; DESCRIPTION: Initialized the monitor at boot. Uses the first buffer as set in data.dasm.
+; ARGS: -
+
+:init_monitor
+	SET PUSH, A
+	SET PUSH, B
+
+	IFE [monitor], 0xFFFF ; no monitor, exit
+		SET PC, init_monitor_exit
+
+	; Set the buffer
+	SET A, 0
+	SET B, [screen_buffer_base]
+	HWI [monitor]
+
+	; Set a grey border
+	SET A, 3
+	SET B, 0x7
+	HWI [monitor]
+
+	:init_monitor_exit
+
+	SET B, POP
+	SET A, POP
+
+	SET PC, POP
+
+; FUNCTION monitor_clear_buffer
+; DESCRIPTION: Clears the Ath buffer.
+; ARGS A - Buffer  A = 0x0001 - 0x0006. 0x0000 is OS buffer.
+:monitor_clear_buffer
+	; Using B, so save it.
+	SET PUSH, A
+	SET PUSH, B
+	;Set the base. the buffer base is basically A * [screen_buffer_length] + [screen_buffer_base]
+	; Get the start of the buffer.
+	SET B, A
+	MUL B, [screen_buffer_length]
+	ADD B, [screen_buffer_base]
+
+	; Set the current buffer loc to the start of the buffer.
+	SET [proc_screen_buffer + A], B
+	SET [proc_screen_buffer_offset + A], 0x000
+
+	SET A, B
+	; loop [screen_buffer_length] times.
+	SET B, 0
+	:clear_monitor_loop	
+		IFE B, [screen_buffer_length]
+			SET PC, clear_monitor_exit
+
+		SET [A], [screen_clear_value]
+		ADD A, 1
+		ADD B, 1
+		SET PC, clear_monitor_loop
+
+	:clear_monitor_exit
+		SET B, POP
+		SET A, POP
+		SET PC, POP
+
+; FUNCTION monitor_set_buffer
+; DESCRIPTION: Displays the given buffer.
+; ARGS A - Buffer  A = 0x0001 - 0x0006. 0x0000 is OS buffer.
+:monitor_set_buffer
+	; using B
+	SET PUSH, A
+	SET PUSH, B
+	; Get the Ath buffer.
+	SET B, [proc_screen_buffer + A]
+	ADD B, [proc_screen_buffer_offset + A]
+
+	SET A, 0
+	HWI [monitor]
+
+	SET B, POP
+	SET A, POP
+	SET PC, POP
+
+; FUNCTION monitor_set_buffer
+; DESCRIPTION: Write to the given buffer.
+; ARGS A - Buffer, B - String
+:monitor_write_buffer
+	; using C and I save them
+	SET PUSH, A
+	SET PUSH, B
+	SET PUSH, C
+	SET PUSH, I
+
+	; Get the Ath buffer
+	SET C, [proc_screen_buffer + A]
+	SET I, proc_screen_buffer
+	ADD I, A
+	SET A, C ; A is now where we will write to.
+	
+
+	;Get the color. Is the first part of a string.
+	SET C, [B] 
+
+	;Go to the next char. 
+	ADD B, 1
+
+	:monitor_write_buffer_loop
+		IFE [B], 0x0000
+			SET PC, monitor_write_buffer_exit
+
+		IFE [B], 0x60 ; new line ` .. use a ' if you need it.
+			SET PC, monitor_write_buffer_newline
+
+		SET [A], [B]
+		BOR [A], C
+
+		ADD A, 1
+		SET PC, monitor_write_buffer_nextchar
+
+		:monitor_write_buffer_newline
+			JSR monitor_newline
+
+		:monitor_write_buffer_nextchar
+			ADD B, 1
+			SET PC, monitor_write_buffer_loop
+
+	:monitor_write_buffer_exit
+		SET [I], A
+
+		SET I, POP
+		SET C, POP
+		SET B, POP
+		SET A, POP
+		SET PC, POP
+
+; FUNCTION monitor_put_char
+; DESCRIPTION: Place a char on the given monitor.
+; ARGS A - Buffer, B - char, C - color.
+:monitor_put_char
+	SET PUSH, A
+	SET PUSH, B
+	SET PUSH, C
+	SET PUSH, I
+
+	SET PUSH, C
+	; Get the Ath buffer
+	SET C, [proc_screen_buffer + A]
+	SET I, proc_screen_buffer
+	ADD I, A
+	SET A, C ; A is now where we will write to.
+
+	SET C, POP
+	BOR B, C
+
+	SET [A], B
+	ADD A, 1
+
+	SET [I], A
+
+	SET I, POP
+	SET C, POP
+	SET B, POP
+	SET A, POP
+	SET PC, POP
+
+; FUNCTION monitor_get_buffer
+; DESC: Returns the current buffer location in A
+; ARG - A - Buffer 
+; RET: B - current buffer location
+:monitor_get_buffer
+	SET PUSH, A
+	SET PUSH, C
+	
+	SET C, [proc_screen_buffer + A]
+	SET I, proc_screen_buffer
+	ADD I, A
+	SET B, C ; A is now where we will write to.
+
+	SET C, POP
+	SET A, POP
+	SET PC, POP
+
+
+; FUNCTION monitor_newline
+; DESCRIPTION: Write a newline at the given buffer location.
+; NOTE: Do not use independently. use monitor_newline_buffer
+; ARGS A - Current buffer location. 
+:monitor_newline
+	SET PUSH, B
+
+	SET B, A
+
+	ADD A, 0x020
+	MOD B, 0x020
+
+	SUB A, B
+
+	SET B, POP
+	SET PC, POP
+
+
+
+; FUNCTION monitor_newline_buffer.
+; DESCRIPTION: Write a newline to the given buffer
+; ARGS A - Buffer
+:monitor_newline_buffer
+	SET PUSH, A
+	SET PUSH, B
+	SET PUSH, C
+
+	SET B, [proc_screen_buffer + A]
+	; store the proc_screen_buffer array location.
+	SET C, proc_screen_buffer
+	ADD C, A
+
+	SET A, B
+	JSR monitor_newline
+
+	SET [C], A
+
+	SET C, POP
+	SET B, POP
+	SET A, POP
+	SET PC, POP
+
+
+;FUNC: Removes the last char.
+;ARG: A - buffer
+:monitor_backspace_buffer
+	SET PUSH, A
+	SET PUSH, C
+	SET PUSH, I
+
+	; Get the Ath buffer
+	SET C, [proc_screen_buffer + A]
+	SET B, proc_screen_buffer
+	
+	ADD I, A
+	SET A, C ; A is now where we will write to.
+
+	SET C, A
+	AND C, 0xFFE0
+
+	; If we're at the start of the buffer, dont go back.
+	IFE A, C  
+		SET PC, monitor_backspace_buffer_exit
+
+	SUB A, 1
+	SET [A], 0x0000
+	SET [I], A
+
+	:monitor_backspace_buffer_exit
+	SET I, POP
+	SET C, POP
+	SET A, POP
+	SET PC, POP	

@@ -1,0 +1,126 @@
+; ----------------------------------
+; Interrupt functions
+; ----------------------------------
+
+
+; Enable and disable interrupts
+:disable_interrupts
+	IAS 0x0000
+	SET PC, POP
+
+:enable_interrupts
+	IAS interrupt_service_routine
+	SET PC, POP
+
+; Enable/disable specific interrupts.
+
+; FUNCTION enable_interrupt
+; DESCRIPTION: Enables given interrupt.
+; ARGS: A - interrupt id.
+:enable_interrupt
+    SET PUSH, A
+    SET PUSH, B
+
+	IFG A, 0x000A
+		SET PC, exit_enable_interrupt
+    
+    SET B, interrupt_status
+    ADD B, A
+
+    SUB B, 0x0001
+
+	SET [B], 0x0001
+
+	:exit_enable_interrupt
+        SET B, POP
+		SET A, POP
+		SET PC, POP
+
+
+; FUNCTION disable_interrupt
+; DESCRIPTION: Enables given interrupt.
+; ARGS: A - interrupt id.
+:disable_interrupt
+    SET PUSH, A
+    SET PUSH, B
+
+    IFG A, 0x000A
+		SET PC, exit_enable_interrupt
+    
+    SET B, interrupt_status
+    ADD B, A
+
+    SUB B, 0x0001
+
+	SET [B], 0x0000
+
+	:exit_disable_interrupt
+        SET B, POP
+    	SET A, POP
+		SET PC, POP
+
+
+; FUNCTION interrupt_service_routine
+; DESCRIPTION: Handles all system interrupts
+; ARGS: A - interrupt description
+:interrupt_service_routine
+	IFG A, 0x00A
+		SET PC, exit_isr
+
+	SUB A, 0x0001
+	SET [int_status], [interrupt_status + A]
+	SET [int_routine], [interrupt_vector + A]
+
+	IFE [int_status], 0x0000 ;interrupt disabled.
+		SET PC, exit_isr
+
+	IFE [int_routine], 0x0000 ; not sure how this can happen.
+		SET PC, exit_isr
+
+	SET PC, [int_routine]
+
+	:exit_isr
+		RFI 0x1
+
+:int_status 	DAT 0x0000
+:int_routine 	DAT 0x0000
+
+; FUNCTION add_interrupt
+; DESCRIPTION: Add an interrupt service routine. 
+; ARGS: A - Interrupt service routine location. 
+; RETURNS B - Interrupt identification number.
+:add_interrupt
+	SET PUSH, A
+	SET PUSH, C
+	SET PUSH, I
+
+	; Go to the next free interrupt.
+	SET B, interrupts
+	IFG [B], 0x00A
+		SET PC, add_interrupt_vector_full
+
+	SET C, interrupt_vector
+	ADD C, [B]
+
+	SET I, interrupt_status
+	ADD I, [B]
+
+	SET [C], A ; set the isr location into the interrupt vector.
+	ADD [B], 1
+    SET B, [B]
+
+	SET [I], 0x0001 ;enable the specific interrupt.
+
+	SET PC, add_interrupt_exit
+
+	:add_interrupt_vector_full
+		SET B, 0x000F
+		SET PC, add_interrupt_exit
+
+	:add_interrupt_exit
+		SET I, POP
+		SET C, POP
+		SET A, POP
+		SET PC, POP
+
+

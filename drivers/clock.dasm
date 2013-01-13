@@ -1,0 +1,74 @@
+; --------------------------------------
+; Generic clock
+; --------------------------------------
+
+; FUNCTION init_monitor
+; DESCRIPTION: Initialized the monitor at boot. Uses the first buffer as set in data.dasm.
+; ARGS: -
+
+:init_clock
+	SET PUSH, A
+	SET PUSH, B
+
+	IFE [clock], 0xFFFF ; no clock, exit
+		SET PC, init_clock_exit
+		
+	; Set the clock frequency to 10 ticks per second.
+	SET A, 0
+	SET B, 30
+	HWI [clock]
+
+	;get the interrupt identification number
+	SET A, clock_isr
+	JSR add_interrupt
+	SET [clock_isr_identifier], B
+
+	;set the interrupt
+	SET A, 2
+	HWI [clock]
+
+	:init_clock_exit
+	SET B, POP
+	SET A, POP
+	SET PC, POP
+
+:clock_isr
+	; increment clock_ticks. If the value is 0xFFFF, set it back to 0.
+	ADD [clock_ticks], 1
+	IFE [clock_ticks], 0xFFFF
+		SET [clock_ticks], 0x0000
+
+	SET PC, exit_isr
+
+:clock_enable
+	SET PUSH, A
+	SET PUSH, B
+
+	SET A, 2
+	SET B, [clock_isr_identifier]
+	HWI [clock]
+
+	SET A, [clock_isr_identifier]
+	JSR enable_interrupt
+
+	SET B, POP
+	SET A, POP
+	SET PC, POP
+
+
+:clock_disable
+	SET PUSH, A
+	SET PUSH, B
+
+	SET A, 2
+	SET B, 0
+	HWI [clock]
+
+	SET A, [clock_isr_identifier]
+	JSR disable_interrupt
+
+	SET B, POP
+	SET A, POP
+	SET PC, POP
+
+:clock_isr_identifier	DAT 0xFFFF
