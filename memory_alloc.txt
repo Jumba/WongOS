@@ -1,0 +1,25 @@
+memory allocation in the form of a linked list.
+
+memory is allocated in form of:
+
+ -- prev_memory : memory : next_memory
+ 
+ If there is no prev_memory fill as 0x0001
+ if there's no next_memory fill as 0xFFFF
+ 
+Memory is allocated in blocks of 16 words.
+
+word 0 : prev_memory (default 0x0001)
+word 16: next_memory (default 0xFFFF)
+
+
+To remove an allocation simple set the next_memory of the prev_memory to the next_memory of the link to be removed. Furthermore set prev_memory of the next_memory to the prev_memory of the removed link. 
+
+
+First memory location is the first multiple of 0x000f after the location of os_end
+
+Fragmentation:
+
+Each link of 16 words has an internal fragmentation of 2 words, used for the prev_memory and next_memory pointers.
+
+Thus for a malloc of size 15 two links are needed, with a fragmentation of 13 words.

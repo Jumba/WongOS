@@ -1,3 +1,3 @@
-@C:\0x10c\WongOS\organic.exe --working-directory C:\0x10c\WongOS\kernel\ --input-file C:\0x10c\WongOS\kernel\core.dasm --output-file  C:\0x10c\WongOS\WongOS.bin
-@START C:\0x10c\Lettuce\Lettuce.exe C:\0x10c\WongOS\WongOS.bin --nowait --connect lem1802,generickeyboard,genericclock
+@H:\WongOS\organic.exe --working-directory H:\WongOS\kernel\ --input-file H:\WongOS\kernel\core.dasm --output-file  H:\WongOS\WongOS.bin
+@START H:\Lettuce\Lettuce.exe H:\WongOS\WongOS.bin --nowait --connect lem1802,generickeyboard,genericclock
 EXIT

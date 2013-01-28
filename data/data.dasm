@@ -34,6 +34,11 @@
 
 :pushall_buffer DAT 0x0000
 
+; memory
+:memory_start				DAT 0x0000
+:memory_end					DAT 0xEFFF
+:next_mem_alloc				DAT 0x0000
+
 ; All screen buffers have length 0x300 
 ; Thus memory space from 0x7000 - 0x8500 is reserved for video memory.
 :screen_buffer_base         DAT 0x7000

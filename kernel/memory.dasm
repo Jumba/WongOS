@@ -1,0 +1,111 @@
+; ------------
+;  Memory allocation
+; ------------
+
+; Memory starts from os_end to 0xEFFF
+; Each segment consists of 16 words (e.g. 0x7000 - 0x700f)
+
+:init_memory
+	SET PUSH, A
+	SET PUSH, B
+	
+	SET A, os_end
+	SET B, A
+	
+	; We will now get the first "clean start" after os_end. So sa os_end is at 
+	; 0x000a we want 0x0010
+	ADD A, 0x0010
+	MOD B, 0x000f
+	
+	SUB A, B
+	
+	SET [memory_start], A
+	SET [next_mem_alloc], A
+	
+	SET B, POP
+	SET A, POP
+	SET PC, POP
+	
+
+	
+; malloc, A = size.
+; size = amount of words.
+; return A = pointer to loc, 0xFFFF if failed.
+:malloc
+	SET PUSH, A
+	SET PUSH, B
+	SET PUSH, C
+	SET PUSH, I
+	SET PUSH, J
+					
+	; At this point B holds a pointer to where we will allocate the first link.
+	; Now to calculate the amount of links needed
+	:malloc_calculate_links
+	; One register for division, one for modulo.
+	SET B, A
+	SET C, A
+	
+	DIV B, 0x000d
+	MOD C, 0x000d
+	
+	IFG C, 0x0000
+		ADD B, 0x0001
+		
+	SET A, B
+	JSR malloc_get_alloc_pointer
+	SET B, [next_mem_alloc]
+	SET I, B
+	
+	; Current state: 
+	; A - amount of links needed
+	; B - pointer to start of memory allocation.
+	; I - pointer to start of memory allocation.
+	
+	; Set the prev_mem
+	SET [B], 0x0001
+	
+	:malloc_allocate_links
+		IFE A, 0x0000
+			SET PC, malloc_allocate_links_exit
+		
+		ADD B, 0x0010
+		SET C, B
+		SUB C, 0x0001
+		
+		SET [C], B ; set next
+		SET [B], C  ; set prev
+
+		SUB A, 0x0001 
+		
+		SET PC, malloc_allocate_links
+		
+	:malloc_allocate_links_exit
+		
+		
+		
+	
+
+; Get the start position where we will begin allocating memory.
+:malloc_get_alloc_pointer
+	SET PUSH, B
+	
+	; If we've reached the end.
+	IFE [next_mem_alloc], 0xF000
+		SET PC, malloc_next_free
+	SET PC, malloc_get_alloc_exit
+	
+	:malloc_next_free
+		SET B, [memory_start]
+		:malloc_next_free_loop
+			IFE [B], 0x0000
+				SET PC, malloc_next_free_exit
+			ADD B, 0x0010
+			SET PC, malloc_next_free_loop
+			
+		:malloc_next_free_exit
+			SET [next_mem_alloc], [B]
+			SET PC, malloc_get_alloc_exit
+		
+	:malloc_get_alloc_exit
+		SET B, POP
+		SET PC, POP

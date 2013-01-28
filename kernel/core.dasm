@@ -1,3 +1,4 @@
+:os_start
 #include "../data/data.dasm"
 #include "../data/strings.dasm"
 
@@ -65,3 +66,5 @@ JSR os_login
 #include "../drivers/monitor.dasm"
 #include "../drivers/clock.dasm"
 #include "../drivers/keyboard.dasm"
+
+:os_end
